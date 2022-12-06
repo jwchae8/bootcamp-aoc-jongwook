@@ -13,3 +13,10 @@
 ;; 예) +3, +3, +4, -2, -4 는 10이 처음으로 두번 나오는 숫자임.
 ;; 0 -> 3 (+3) -> 6 (+3) -> 10(+4) -> 8(-2) -> 4(-4) -> 7(+3) -> 10(+3) -> ...
 
+(defn find-first-repeated-occurrence [x]
+  (reduce (fn [visited val]
+            (if (visited val) (reduced val) (conj visited val)))
+          #{0}
+          x))
+
+(comment (find-first-repeated-occurrence (reductions + (cycle [3 3 4 -2 -4]))))
