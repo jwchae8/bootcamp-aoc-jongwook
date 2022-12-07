@@ -16,25 +16,59 @@
 (def input (clojure.string/split-lines (slurp "resources/day2_part1")))
 (some #{1} (vals (frequencies "abcdef")))
 (defn has-value-n [n]
-  (fn [n] (partial filter (fn [text] some #{n}))))
+  (fn [coll] (coll n)))
+(defn filter-value-n [n]
+  (partial filter (has-value-n n)))
+
 (defn has-value-2-3 [coll]
-  ((juxt (partial filter (has-value-n 2)) (partial filter (has-value-n 3))) coll))
+  ((juxt (has-value-n 2) (has-value-n 3)) coll))
+
+(defn accumulate-non-nil [idx]
+  (fn [xs] (reduce (fn [x y] (if (nil? (nth y idx))
+                               x
+                               (+ 1 x))) 0 xs)))
+
+(defn filter-value-2-3 [xs]
+  ((juxt (filter-value-n 2) (filter-value-n 3)) xs))
+
+(defn transpose [m]
+  (apply mapv vector m))
+
+
+
 (defn counters-set [text] (->
-                            text
-                            frequencies
-                            vals
-                            set))
+                             text
+                             frequencies
+                             vals
+                             set))
 (->
   "abbccc"
   counters-set
-  has-value-2-3)
+  filter-value-2-3)
 
-(has-value-2-3 (map counters-set input))
 
+;;method 1
 (->>
   input
   (map counters-set)
-  has-value-2-3
+  filter-value-2-3
+  (map count)
+  (reduce *))
+
+;;method 2
+(->>
+  input
+  (map counters-set)
+  (map has-value-2-3)
+  ((juxt (accumulate-non-nil 0) (accumulate-non-nil 1)))
+  (reduce *))
+;;method 3
+(->>
+  input
+  (map counters-set)
+  (map has-value-2-3)
+  transpose
+  (map (fn [xs] (remove nil? xs)))
   (map count)
   (reduce *))
 
@@ -52,6 +86,34 @@
 
 ;; 주어진 예시에서 fguij와 fghij는 같은 위치 (2번째 인덱스)에 정확히 한 문자 (u와 h)가 다름. 따라서 같은 부분인 fgij를 리턴하면 됨.
 
+(def input2 (clojure.string/split-lines (slurp "resources/day2_part2")))
+(def indexed-input2 (map-indexed vector input2))
+(defn str-diff [str1 str2]
+  (->>
+    (map (fn [x y] (= x y)) str1 str2)
+    (filter false?)
+    count))
+(defn find-common [str1 str2]
+  (->>
+    (map (fn [x y] (if (= x y)
+                     x
+                     nil)) str1 str2)
+    (remove nil?)
+    clojure.string/join))
+
+(find-common "asdf" "assf")
+(defn find-common-from-one-char-diff-pair [indexed-xs]
+  (->
+    (for [x indexed-xs
+          y indexed-xs
+          :let [[idx1 str1] x]
+          :let [[idx2 str2] y]
+          :while (> idx1 idx2)
+          :when (= (str-diff str1 str2) 1)]
+      (find-common str1 str2))
+    first))
+
+(find-common-from-one-char-diff-pair indexed-input2)
 
 ;; #################################
 ;; ###        Refactoring        ###
