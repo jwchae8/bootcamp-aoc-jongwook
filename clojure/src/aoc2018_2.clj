@@ -13,6 +13,31 @@
 ;; ababab 3개의 a, 3개의 b 지만 한 문자열에서 같은 갯수는 한번만 카운트함 -> (두번 나오는 문자열 수: 4, 세번 나오는 문자열 수: 3)
 ;; 답 : 4 * 3 = 12
 
+(def input (clojure.string/split-lines (slurp "resources/day2_part1")))
+(some #{1} (vals (frequencies "abcdef")))
+(defn has-value-n [n]
+  (fn [n] (partial filter (fn [text] some #{n}))))
+(defn has-value-2-3 [coll]
+  ((juxt (partial filter (has-value-n 2)) (partial filter (has-value-n 3))) coll))
+(defn counters-set [text] (->
+                            text
+                            frequencies
+                            vals
+                            set))
+(->
+  "abbccc"
+  counters-set
+  has-value-2-3)
+
+(has-value-2-3 (map counters-set input))
+
+(->>
+  input
+  (map counters-set)
+  has-value-2-3
+  (map count)
+  (reduce *))
+
 
 ;; 파트 2
 ;; 여러개의 문자열 중, 같은 위치에 정확히 하나의 문자가 다른 문자열 쌍에서 같은 부분만을 리턴하시오.
