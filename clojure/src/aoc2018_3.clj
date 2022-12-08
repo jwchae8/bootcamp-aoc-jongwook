@@ -22,7 +22,7 @@
                             (re-find input-pattern)
                             rest
                             (map parse-long)))
-
+(parse-input (first input-lines))
 
 ;; input: regex 패턴을 통해 파싱된 input값
 ;; output: 리스트 값들에 key를 붙여서 만든 hashmap
@@ -35,6 +35,7 @@
    :y-coord y-coord
    :width width
    :height height})
+(build-hashmap-from-input '(1 2 3 4 5))
 
 ;; input: :id, :x-coord, :y-coord, :width, :height로 구성된 hashmap
 ;; output: 해당 사각형이 위치하고 있는 좌표들의 벡터
@@ -45,6 +46,8 @@
   (for [x (range x-coord (+ x-coord width))
         y (range y-coord (+ y-coord height))]
     [x y]))
+(build-coordinate-vector-from-hashmap {:id 1, :x-coord 2, :y-coord 3, :width 4, :height 5})
+
 
 ;; input: :id, :x-coord, :y-coord, :width, :height로 구성된 hashmap
 ;; output: 해당 사각형이 위치하고 있는 좌표들을 키로 하고 :id를 value로 가지는 hashmap
@@ -53,12 +56,14 @@
 (defn build-coordinate-to-id-set-hashmap
   [rect]
   (zipmap (build-coordinate-vector-from-hashmap rect) (repeat #{(:id rect)})))
+(build-coordinate-to-id-set-hashmap {:id 1, :x-coord 2, :y-coord 3, :width 4, :height 5})
 
 ;; input: 사각형 id들이 든 set
 ;; output: id를 key로 가지고 set의 크기가 value인 hashmap
 ;; example
 ;; #{1 2 3 4} -> {1 4, 2 4, 3 4, 4 4}
 (defn build-id-to-count-hashmap [id-set] (zipmap id-set (repeat (count id-set))))
+(build-id-to-count-hashmap #{1 2 3})
 
 ;; 파트 1
 ;; 다음과 같은 입력이 주어짐.
