@@ -14,14 +14,14 @@
 ;; 문제 input 파싱을 위한 regex 패턴
 (def input-pattern #"#(\d+) @ (\d+),(\d+): (\d+)x(\d+)")
 ;; input: input 파일 내 input 한 줄
-;; output: 파싱된 숫자값의 리스트(사각형 id, 좌표, 크기)
+;; output: 숫자 벡터(사각형 id, 좌표, 크기 등)
 ;; example
 ;; #1 @ 669,271: 17x11 -> (1 669 271 17 11)
-(defn parse-and-extract-values [input] (->>
-                                         input
-                                         (re-find input-pattern)
-                                         rest
-                                         (map parse-long)))
+(defn parse-input [input] (->>
+                            input
+                            (re-find input-pattern)
+                            rest
+                            (map parse-long)))
 
 
 ;; input: regex 패턴을 통해 파싱된 input값
@@ -84,7 +84,7 @@
 
 (comment (->>
            input-lines
-           (map parse-and-extract-values)
+           (map parse-input)
            (map build-hashmap-from-input)
            (map build-coordinate-vector-from-hashmap)
            (map frequencies)
@@ -101,7 +101,7 @@
 
 (comment (->>
            input-lines2
-           (map parse-and-extract-values)
+           (map parse-input)
            (map build-hashmap-from-input)
            (map build-coordinate-to-id-set-hashmap)
            (reduce (fn [x y] (merge-with into x y)))

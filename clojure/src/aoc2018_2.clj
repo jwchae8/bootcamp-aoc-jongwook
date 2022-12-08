@@ -13,15 +13,26 @@
 ;; ababab 3개의 a, 3개의 b 지만 한 문자열에서 같은 갯수는 한번만 카운트함 -> (두번 나오는 문자열 수: 4, 세번 나오는 문자열 수: 3)
 ;; 답 : 4 * 3 = 12
 
-(def input (clojure.string/split-lines (slurp "resources/day2_part1")))
-(some #{1} (vals (frequencies "abcdef")))
-(defn has-value-n [n]
-  (fn [coll] (coll n)))
-(defn filter-value-n [n]
-  (partial filter (has-value-n n)))
+(def input (->
+             "resources/day2_part1"
+             slurp
+             clojure.string/split-lines))
 
-(defn has-value-2-3 [coll]
-  ((juxt (has-value-n 2) (has-value-n 3)) coll))
+;; 주석으로 input/output 정리
+;; has-value-n은 너무 trivial한 함수라서 그냥 호출해도 괜찮을 것 같다
+;; boolean을 반환하면 함수 이름 끝에 ?를 붙이는 convention있음
+;; 좀 더 명확하게 결과값을 알고 싶으면 contains?를 쓰는 것이 좋음
+;(defn has-value-n [n]
+;  (fn [coll] (coll n)))
+(defn filter-value-n [n]
+  (partial filter (fn [count-set] (count-set n))))
+
+;; parameter이름에 coll을 썼지만, vector가 들어가면 검사가 안됨
+;(defn has-value-2-3 [coll]
+;  ((juxt (has-value-n 2) (has-value-n 3)) coll))
+
+(defn has-value-2-3 [count-set]
+  ((juxt #(% 2) #(% 3)) count-set))
 
 (defn accumulate-non-nil [idx]
   (fn [xs] (reduce (fn [x y] (if (nil? (nth y idx))
@@ -31,6 +42,7 @@
 (defn filter-value-2-3 [xs]
   ((juxt (filter-value-n 2) (filter-value-n 3)) xs))
 
+;; mapv는 eager한 함수(cycle과 함께 쓰면 무한 루프에 빠지게 됨)
 (defn transpose [m]
   (apply mapv vector m))
 
@@ -86,13 +98,17 @@
 
 ;; 주어진 예시에서 fguij와 fghij는 같은 위치 (2번째 인덱스)에 정확히 한 문자 (u와 h)가 다름. 따라서 같은 부분인 fgij를 리턴하면 됨.
 
-(def input2 (clojure.string/split-lines (slurp "resources/day2_part2")))
+(def input2 (->
+              "resources/day2_part2"
+              slurp
+              clojure.string/split-lines))
 (def indexed-input2 (map-indexed vector input2))
 (defn str-diff [str1 str2]
   (->>
-    (map (fn [x y] (= x y)) str1 str2)
-    (filter false?)
+    (map vector str1 str2)
+    (filter #(apply not= %))
     count))
+(str-diff "asdf" "assf")
 (defn find-common [str1 str2]
   (->>
     (map (fn [x y] (if (= x y)
@@ -104,10 +120,8 @@
 (find-common "asdf" "assf")
 (defn find-common-from-one-char-diff-pair [indexed-xs]
   (->
-    (for [x indexed-xs
-          y indexed-xs
-          :let [[idx1 str1] x]
-          :let [[idx2 str2] y]
+    (for [[idx1 str1] indexed-xs
+          [idx2 str2] indexed-xs
           :while (> idx1 idx2)
           :when (= (str-diff str1 str2) 1)]
       (find-common str1 str2))
