@@ -1,5 +1,54 @@
 (ns aoc2018_3)
 
+;; example
+;; #1 @ 669,271: 17x11
+(def input-lines (->
+                   "resources/day3_part1"
+                   slurp
+                   clojure.string/split-lines))
+
+;; 문제 input 파싱을 위한 regex 패턴
+(def input-pattern #"#(\d+) @ (\d+),(\d+): (\d+)x(\d+)")
+;; input: input 파일 내 input 한 줄
+;; output: 파싱된 숫자값의 리스트(사각형 id, 좌표, 크기)
+;; example
+;; #1 @ 669,271: 17x11 -> (1 669 271 17 11)
+(defn parse-and-extract-values [input] (->>
+                                         input
+                                         (re-find input-pattern)
+                                         rest
+                                         (map parse-long)))
+
+
+;; input: regex 패턴을 통해 파싱된 input값의 리스트, destructuring한 것과 같은 값 구성
+;; output: 리스트 값들에 key를 붙여서 만든 hashmap
+;; example
+;; (1 2 3 4 5) -> (:id 1 :x-coord 2 :y-coord 3 :width 4 :height 5)
+(defn build-hashmap-from-input [[id x-coord y-coord width height]] {
+                                                                    :id id
+                                                                    :x-coord x-coord
+                                                                    :y-coord y-coord
+                                                                    :width width
+                                                                    :height height})
+(defn build-coordinate-vector-from-hashmap
+  [{:keys [x-coord y-coord width height]}]
+  (for [x (range x-coord (+ x-coord width))
+        y (range y-coord (+ y-coord height))]
+    [x y]))
+
+
+
+
+(comment (->>
+           input-lines
+           (map parse-and-extract-values)
+           (map build-hashmap-from-input)
+           (map build-coordinate-vector-from-hashmap)
+           (map frequencies)
+           (reduce (fn [x y] (merge-with + x y)))
+           vals
+           (filter #(> % 1))
+           count))
 
 ;; 파트 1
 ;; 다음과 같은 입력이 주어짐.
