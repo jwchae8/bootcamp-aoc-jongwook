@@ -6,6 +6,10 @@
                    "resources/day3_part1"
                    slurp
                    clojure.string/split-lines))
+(def input-lines2 (->
+                    "resources/day3_part2"
+                    slurp
+                    clojure.string/split-lines))
 
 ;; 문제 input 파싱을 위한 regex 패턴
 (def input-pattern #"#(\d+) @ (\d+),(\d+): (\d+)x(\d+)")
@@ -20,35 +24,41 @@
                                          (map parse-long)))
 
 
-;; input: regex 패턴을 통해 파싱된 input값의 리스트, destructuring한 것과 같은 값 구성
+;; input: regex 패턴을 통해 파싱된 input값
 ;; output: 리스트 값들에 key를 붙여서 만든 hashmap
 ;; example
-;; (1 2 3 4 5) -> (:id 1 :x-coord 2 :y-coord 3 :width 4 :height 5)
-(defn build-hashmap-from-input [[id x-coord y-coord width height]] {
-                                                                    :id id
-                                                                    :x-coord x-coord
-                                                                    :y-coord y-coord
-                                                                    :width width
-                                                                    :height height})
+;; (1 2 3 4 5) -> {:id 1 :x-coord 2 :y-coord 3 :width 4 :height 5}
+(defn build-hashmap-from-input [[id x-coord y-coord width height]]
+  {
+   :id id
+   :x-coord x-coord
+   :y-coord y-coord
+   :width width
+   :height height})
+
+;; input: :id, :x-coord, :y-coord, :width, :height로 구성된 hashmap
+;; output: 해당 사각형이 위치하고 있는 좌표들의 벡터
+;; example
+;; {:id 1 :x-coord 2 :y-coord 2 :width 2 :height 2} -> [[2 2] [2 3] [3 2] [3 3]]
 (defn build-coordinate-vector-from-hashmap
   [{:keys [x-coord y-coord width height]}]
   (for [x (range x-coord (+ x-coord width))
         y (range y-coord (+ y-coord height))]
     [x y]))
 
+;; input: :id, :x-coord, :y-coord, :width, :height로 구성된 hashmap
+;; output: 해당 사각형이 위치하고 있는 좌표들을 키로 하고 :id를 value로 가지는 hashmap
+;; example
+;; {:id 1 :x-coord 2 :y-coord 2 :width 2 :height 2} -> {[2 2] 1, [2 3] 1, [3 2] 1, [3 3] 1}
+(defn build-coordinate-to-id-set-hashmap
+  [rect]
+  (zipmap (build-coordinate-vector-from-hashmap rect) (repeat #{(:id rect)})))
 
-
-
-(comment (->>
-           input-lines
-           (map parse-and-extract-values)
-           (map build-hashmap-from-input)
-           (map build-coordinate-vector-from-hashmap)
-           (map frequencies)
-           (reduce (fn [x y] (merge-with + x y)))
-           vals
-           (filter #(> % 1))
-           count))
+;; input: 사각형 id들이 든 set
+;; output: id를 key로 가지고 set의 크기가 value인 hashmap
+;; example
+;; #{1 2 3 4} -> {1 4, 2 4, 3 4, 4 4}
+(defn build-id-to-count-hashmap [id-set] (zipmap id-set (repeat (count id-set))))
 
 ;; 파트 1
 ;; 다음과 같은 입력이 주어짐.
@@ -72,10 +82,32 @@
 ;; 여기서 XX는 ID 1, 2, 3의 영역이 두번 이상 겹치는 지역.
 ;; 겹치는 지역의 갯수를 출력하시오. (위의 예시에서는 4)
 
-
+(comment (->>
+           input-lines
+           (map parse-and-extract-values)
+           (map build-hashmap-from-input)
+           (map build-coordinate-vector-from-hashmap)
+           (map frequencies)
+           (reduce (fn [x y] (merge-with + x y)))
+           vals
+           (filter #(> % 1))
+           count))
 
 
 ;; 파트 2
 ;; 입력대로 모든 격자를 채우고 나면, 정확히 한 ID에 해당하는 영역이 다른 어떤 영역과도 겹치지 않음
 ;; 위의 예시에서는 ID 3 이 ID 1, 2와 겹치지 않음. 3을 출력.
 ;; 겹치지 않는 영역을 가진 ID를 출력하시오. (문제에서 답이 하나만 나옴을 보장함)
+
+(comment (->>
+           input-lines2
+           (map parse-and-extract-values)
+           (map build-hashmap-from-input)
+           (map build-coordinate-to-id-set-hashmap)
+           (reduce (fn [x y] (merge-with into x y)))
+           vals
+           (map build-id-to-count-hashmap)
+           (reduce (fn [x y] (merge-with max x y)))
+           (reduce (fn [x y] (if (= (val y) 1)
+                               (reduced (key y))
+                               y)))))
