@@ -21,19 +21,27 @@
 (defn parse-long-or-nil [string] (if (nil? string)
                                    nil
                                    (parse-long string)))
+(parse-long-or-nil "12345")
+(parse-long-or-nil nil)
 
-
+;; input: 로그 한 줄
+;; output: {:minute 분, :guard-id 가드 ID 혹은 nil}
+;; example
+;; [1518-07-04 00:01] falls asleep -> {:minute 1, :guard-id nil}
+;; [1518-06-07 00:03] Guard #2789 begins shift -> {:minute 3, :guard-id 2789}
 (defn parse-log [log] (->>
                         log
                         (re-find input-pattern)
                         rest
                         (map parse-long-or-nil)
                         (zipmap [:minute :guard-id])))
+(parse-log "[1518-07-04 00:01] falls asleep")
+(parse-log "[1518-06-27 00:42] wakes up")
+(parse-log "[1518-06-07 00:03] Guard #2789 begins shift")
+
 
 ;; input: {:minute 분값 :guard-id 가드ID 혹은 nil값}으로 이뤄진 시퀀스
 ;; output: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}로 이뤄진 시퀀스
-;; example
-;;
 (defn group-logs-by-guard-id [logs] (->>
                                       logs
                                       (partition-by (fn [log] (nil? (:guard-id log))))
@@ -42,33 +50,53 @@
                                              {(:guard-id (last guard)) (map :minute minutes)}))
                                       (apply merge-with concat)
                                       (map (fn [[guard minutes]]
-                                             {:guard-id guard :logs (map (fn [interval] (zipmap [:sleep :wake] interval)) (partition 2 minutes))}))))
+                                             {:guard-id guard
+                                              :logs (map (fn [interval]
+                                                           (zipmap [:sleep :wake] interval))
+                                                         (partition 2 minutes))}))))
 
 (->>
   input-lines
   sort
   (map parse-log)
-  (partition-by (fn [log] (nil? (:guard-id log))))
-  (partition 2))
+  group-logs-by-guard-id)
 
-(defn sleep-time [{:keys [logs]}] (->>
-                                   logs
-                                   (map (fn [{:keys [wake sleep]}] (- wake sleep)))
-                                   (apply +)))
+;; input: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}
+;; output: 해당 가드가 잔 총 시간
+;; example
+;; {:guard-id 1 :logs [{:wake 10 :sleep 5} {:wake 20 :sleep 15}]} -> 10
+(defn sleep-time
+  [{:keys [logs]}]
+  (->>
+   logs
+   (map (fn [{:keys [wake sleep]}] (- wake sleep)))
+   (apply +)))
+(sleep-time {:guard-id 1 :logs [{:wake 10 :sleep 5} {:wake 20 :sleep 15}]})
 
-(defn max-sleep-time-guard [log-by-guards] (->>
-                                             log-by-guards
-                                             (apply max-key sleep-time)))
+;; input: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}의 시퀀스
+;; output: 가장 오래 잔 가드의 ID
+(defn max-sleep-time-guard
+  [log-by-guards]
+  (->>
+    log-by-guards
+    (apply max-key sleep-time)))
 
-(defn most-sleeping-minute [{:keys [guard-id logs]}] (->>
-                                                       logs
-                                                       (map #(range (:sleep %) (:wake %)))
-                                                       (reduce concat)
-                                                       frequencies
-                                                       (apply max-key val)
-                                                       (#(hash-map :guard-id guard-id
-                                                                   :minute (key %)
-                                                                   :frequency (val %)))))
+;; input: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}
+;; output: {:guard-id 가드ID
+;;          :minute 가장 많이 잔 분
+;;          :frequency 잔 횟수}
+(defn most-sleeping-minute
+  [{:keys [guard-id logs]}]
+  (->>
+    logs
+    (map (fn [{:keys [sleep wake]}] (range sleep wake)))
+    (reduce concat)
+    frequencies
+    (apply max-key val)
+    ((fn [[minute frequency]]
+       {:guard-id guard-id
+        :minute minute
+        :frequency frequency}))))
 
 
 (defn answer [{:keys [guard-id minute]}] (* guard-id minute))
