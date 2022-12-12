@@ -18,8 +18,11 @@
 ;; example
 ;; "1234" -> 1234
 ;; nil -> nil
-(defn parse-long-or-nil [string] (if (nil? string)
-                                   nil
+;; when 혹은 some 사용하기
+;; if 브랜치에서 nil 검사가 있으면 when을 주로 사용함
+;; some 매크로를 사용하면 중간 결과가 nil일 때부터 함수를 더 이상 실행하지 않음
+;; 주석은 ""써보기
+(defn parse-long-or-nil [string] (when (string? string)
                                    (parse-long string)))
 (parse-long-or-nil "12345")
 (parse-long-or-nil nil)
