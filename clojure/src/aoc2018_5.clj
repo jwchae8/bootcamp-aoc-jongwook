@@ -19,7 +19,9 @@
   (and (not-any? nil? (list char1 char2))
        (= (abs (- (int char1) (int char2))) 32)))
 (react? \A nil)
-'(1 2 3)
+(react? \A \a)
+(react? \a \b)
+(react? \a \a)
 
 (defn polymer-after-react
   "
@@ -36,6 +38,7 @@
         (pop stack)
         (conj stack char)))
     [] polymer))
+(polymer-after-react "bcCAa")
 
 (defn distinct-elements-in-polymer
   "
@@ -52,6 +55,8 @@
     polymer
     str/lower-case
     distinct))
+(distinct-elements-in-polymer "abcde")
+(distinct-elements-in-polymer "aAaAa")
 
 (defn remove-elements-in-polymer
   "
@@ -63,6 +68,8 @@
   "
   [polymer element]
   (remove #{element (first (str/upper-case element))} polymer))
+(remove-elements-in-polymer "abcdA" \a)
+
 
 ;; 파트 1
 ;; 입력: dabAcCaCBAcCcaDA
@@ -94,5 +101,7 @@
   input
   distinct-elements-in-polymer
   (map (fn [element] (remove-elements-in-polymer input element)))
-  (map (fn [polymer] (count (polymer-after-react polymer))))
+  (map (fn [polymer] (-> polymer
+                         polymer-after-react
+                         count)))
   (apply min))
