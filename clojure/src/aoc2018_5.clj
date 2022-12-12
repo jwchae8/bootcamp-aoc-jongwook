@@ -58,7 +58,7 @@
 (distinct-elements-in-polymer "abcde")
 (distinct-elements-in-polymer "aAaAa")
 
-(defn remove-elements-in-polymer
+(defn remove-element-in-polymer
   "
   string과 알파벳을 받아 string으로부터 주어진 알파벳을 case-insensitive하게 제거하는 함수
   input: string 및 알파벳
@@ -68,7 +68,7 @@
   "
   [polymer element]
   (remove #{element (first (str/upper-case element))} polymer))
-(remove-elements-in-polymer "abcdA" \a)
+(remove-element-in-polymer "abcdA" \a)
 
 
 ;; 파트 1
@@ -100,7 +100,7 @@
 (->>
   input
   distinct-elements-in-polymer
-  (map (fn [element] (remove-elements-in-polymer input element)))
+  (map (fn [element] (remove-element-in-polymer input element)))
   (map (fn [polymer] (-> polymer
                          polymer-after-react
                          count)))
