@@ -13,50 +13,60 @@
 ;; 분(minute)값과 가드의 ID만을 구한다
 (def input-pattern #":(\d+)[^0-9]*(\d+)?")
 
-;; nil이면 nil, 아니면 parse-long 결과를 반환
-;; 이게 idiomatic한 접근인지는 잘 모르겠습니다만...
-;; example
-;; "1234" -> 1234
-;; nil -> nil
+
 ;; when 혹은 some 사용하기
 ;; if 브랜치에서 nil 검사가 있으면 when을 주로 사용함
 ;; some 매크로를 사용하면 중간 결과가 nil일 때부터 함수를 더 이상 실행하지 않음
 ;; 주석은 ""써보기
-(defn parse-long-or-nil [string] (when (string? string)
-                                   (parse-long string)))
+(defn parse-long-or-nil
+  "
+  example
+  \"1234\" -> 1234
+  nil -> nil
+  "
+  [string] (when (string? string)
+             (parse-long string)))
 (parse-long-or-nil "12345")
 (parse-long-or-nil nil)
 
-;; input: 로그 한 줄
-;; output: {:minute 분, :guard-id 가드 ID 혹은 nil}
-;; example
-;; [1518-07-04 00:01] falls asleep -> {:minute 1, :guard-id nil}
-;; [1518-06-07 00:03] Guard #2789 begins shift -> {:minute 3, :guard-id 2789}
-(defn parse-log [log] (->>
-                        log
-                        (re-find input-pattern)
-                        rest
-                        (map parse-long-or-nil)
-                        (zipmap [:minute :guard-id])))
+
+(defn parse-log
+  "
+  input: 로그 한 줄
+  output: {:minute 분, :guard-id 가드 ID 혹은 nil}
+  example
+  [1518-07-04 00:01] falls asleep -> {:minute 1, :guard-id nil}
+  [1518-06-07 00:03] Guard #2789 begins shift -> {:minute 3, :guard-id 2789}
+  "
+  [log] (->>
+          log
+          (re-find input-pattern)
+          rest
+          (map parse-long-or-nil)
+          (zipmap [:minute :guard-id])))
 (parse-log "[1518-07-04 00:01] falls asleep")
 (parse-log "[1518-06-27 00:42] wakes up")
 (parse-log "[1518-06-07 00:03] Guard #2789 begins shift")
 
 
-;; input: {:minute 분값 :guard-id 가드ID 혹은 nil값}으로 이뤄진 시퀀스
-;; output: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}로 이뤄진 시퀀스
-(defn group-logs-by-guard-id [logs] (->>
-                                      logs
-                                      (partition-by (fn [log] (nil? (:guard-id log))))
-                                      (partition 2)
-                                      (map (fn [[guard minutes]]
-                                             {(:guard-id (last guard)) (map :minute minutes)}))
-                                      (apply merge-with concat)
-                                      (map (fn [[guard minutes]]
-                                             {:guard-id guard
-                                              :logs (map (fn [interval]
-                                                           (zipmap [:sleep :wake] interval))
-                                                         (partition 2 minutes))}))))
+
+(defn group-logs-by-guard-id
+  "
+  input: {:minute 분값 :guard-id 가드ID 혹은 nil값}으로 이뤄진 시퀀스
+  output: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}로 이뤄진 시퀀스
+  "
+  [logs] (->>
+           logs
+           (partition-by (fn [log] (nil? (:guard-id log))))
+           (partition 2)
+           (map (fn [[guard minutes]]
+                  {(:guard-id (last guard)) (map :minute minutes)}))
+           (apply merge-with concat)
+           (map (fn [[guard minutes]]
+                  {:guard-id guard
+                   :logs (map (fn [interval]
+                                (zipmap [:sleep :wake] interval))
+                              (partition 2 minutes))}))))
 
 (->>
   input-lines
@@ -64,11 +74,13 @@
   (map parse-log)
   group-logs-by-guard-id)
 
-;; input: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}
-;; output: 해당 가드가 잔 총 시간
-;; example
-;; {:guard-id 1 :logs [{:wake 10 :sleep 5} {:wake 20 :sleep 15}]} -> 10
 (defn sleep-time
+  "
+  input: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}
+  output: 해당 가드가 잔 총 시간
+  example
+  {:guard-id 1 :logs [{:wake 10 :sleep 5} {:wake 20 :sleep 15}]} -> 10
+  "
   [{:keys [logs]}]
   (->>
    logs
@@ -76,19 +88,24 @@
    (apply +)))
 (sleep-time {:guard-id 1 :logs [{:wake 10 :sleep 5} {:wake 20 :sleep 15}]})
 
-;; input: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}의 시퀀스
-;; output: 가장 오래 잔 가드의 ID
 (defn max-sleep-time-guard
+  "
+  input: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}의 시퀀스
+  output: 가장 오래 잔 가드의 ID
+  "
   [log-by-guards]
   (->>
     log-by-guards
     (apply max-key sleep-time)))
 
-;; input: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}
-;; output: {:guard-id 가드ID
-;;          :minute 가장 많이 잔 분
-;;          :frequency 잔 횟수}
+
 (defn most-sleeping-minute
+  "
+  input: {:logs 한 가드가 자거나 깬 분값의 시퀀스 :guard-id 가드ID}
+  output: {:guard-id 가드ID
+           :minute 가장 많이 잔 분
+           :frequency 잔 횟수}
+  "
   [{:keys [guard-id logs]}]
   (->>
     logs
