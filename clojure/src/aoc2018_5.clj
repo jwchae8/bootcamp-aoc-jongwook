@@ -5,6 +5,7 @@
              "resources/day5"
              slurp))
 
+;; ASCII 변환하지 않고 구현해보기
 (defn react?
   "
   두 문자가 서로 반응할 수 있는지(동일한 알파벳이면서 case가 서로 다른지) 검사하는 함수
@@ -17,12 +18,12 @@
   "
   [char1 char2]
   (and (not-any? nil? (list char1 char2))
-       (= (abs (- (int char1) (int char2))) 32)))
+       (not= char1 char2)
+       (= (str/lower-case char1) (str/lower-case char2))))
 (react? \A nil)
 (react? \A \a)
 (react? \a \b)
 (react? \a \a)
-
 (defn polymer-after-react
   "
   주어진 문자열이 문제에서 정의된 반응을 마치고 난 이후 남은 문자열
@@ -36,7 +37,7 @@
     (fn [stack char]
       (if (react? (peek stack) char)
         (pop stack)
-        (conj stack char)))
+        (conj stack char))) ;; drop-last
     [] polymer))
 (polymer-after-react "bcCAa")
 
@@ -66,7 +67,7 @@
   example
   abcdA a -> bcd
   "
-  [polymer element]
+  [polymer element] ;; let-binding으로 대문자 이름을 지어주기
   (remove #{element (first (str/upper-case element))} polymer))
 (remove-element-in-polymer "abcdA" \a)
 
@@ -97,8 +98,7 @@
 ;; 예를 들어 dabAcCaCBAcCcaDA 에서 a/A를 없애고 모두 반응시키면 dbCBcD가 되고 길이는 6인데 비해,
 ;; 같은 문자열에서 c/C를 없애고 모두 반응시키면 daDA가 남고 길이가 4이므로 4가 가장 짧은 길이가 됨.
 
-(->>
-  input
+(->> input
   distinct-elements-in-polymer
   (map (fn [element] (remove-element-in-polymer input element)))
   (map (fn [polymer] (-> polymer
