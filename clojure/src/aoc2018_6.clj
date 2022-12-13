@@ -1,12 +1,22 @@
 (ns aoc2018_6)
 
+;; example
+;; 165, 169
 (def input-lines (->
                    "resources/day6"
                    slurp
                    clojure.string/split-lines))
 
+;; 파싱을 위한 정규표현식!
 (def input-pattern #"(\d+), (\d+)")
 (defn parse
+  "
+  map-indexed의 인자가 되는 파싱함수.
+  input: input의 번째 수 및 값
+  output: {:x x좌표, :y y좌표, :id 번째수}
+  example
+  0 \"165, 169\" -> {:x 165 :y 169 :id 0}
+  "
   [index input-line]
   (->> input-line
        (re-find input-pattern)
@@ -15,13 +25,31 @@
        ((fn [[x y]] {:x x
                      :y y
                      :id index}))))
+(parse 0 "165, 169")
+
 (defn manhattan-distance
+  "
+  두 위치 사이의 manhattan distance를 구하는 함수
+  input: 두 위치({:x x좌표, :y y좌표, :id 번째수})
+  output: 거리
+  example
+  {:x 0, :y 0, :id 0} {:x 1, :y 1, :id 1} -> 2
+  "
   [{point1-x :x point1-y :y}
    {point2-x :x point2-y :y}]
   (+ (abs (- point1-x point2-x))
      (abs (- point1-y point2-y))))
+(manhattan-distance {:x 0 :y 0 :id 0} {:x 1 :y 1 :id 1})
 
 (defn area-in-interest
+  "
+  문제 1, 2 모두 주어진 좌표를 모두 포함하는 최소 영역만 고려하면 되기 때문에
+  x, y 최대 최소 좌표를 가지는 hashmap을 구하는 함수
+  input: 주어진 좌표들({:x x좌표, :y y좌표, :id 번째수})
+  output: {:min-x x좌표 중 최소값 max-x x좌표 중 최대값 :min-y y좌표 중 최소값 :max-y y좌표 중 최대값}
+  example
+  {:x 0, :y 0, :id 0} {:x 1, :y 1, :id 1} -> {:min-x 0 :min-y 0 :max-x 1 :max-y 1}
+  "
   [locations]
   (let [xs (map :x locations)
         ys (map :y locations)]
@@ -29,15 +57,30 @@
      :min-y (apply min ys)
      :max-x (apply max xs)
      :max-y (apply max ys)}))
-
+(area-in-interest [{:x 0, :y 0, :id 0} {:x 1, :y 1, :id 1}])
 (defn all-points-in-given-area
+  "
+  주어진 영역에 있는 모든 점의 좌표들을 구하는 함수
+  input: 영역 {:min-x x좌표 중 최소값 max-x x좌표 중 최대값 :min-y y좌표 중 최소값 :max-y y좌표 중 최대값}
+  output: {:x x좌표 :y y좌표}의 리스트
+  example
+  {:min-x 0 :max-x 1 :min-y 0 :max-y 1} -> ({:x 0, :y 0} {:x 0, :y 1} {:x 1, :y 0} {:x 1, :y 1})
+  "
   [{:keys [min-x min-y max-x max-y]}]
   (for [x (range min-x (inc max-x))
         y (range min-y (inc max-y))]
     {:x x
      :y y}))
+(all-points-in-given-area {:min-x 0 :max-x 1 :min-y 0 :max-y 1})
 
 (defn closest-locations-to-point
+  "
+  입력 상에 주어진 위치들 중 주어진 점과 가장 가까운 곳들의 좌표를 구하는 함수
+  input: locations - '({:id 번째수 :x x좌표 :y y좌표} ...) point - {:x x좌표 :y y좌표}
+  output: 가장 가까운 위치의 id들의 리스트
+  example
+  '({:id 0 :x 0 :y 0} {:id 1 :x 5 :y 5}) {:x 1 :y 1} -> '(0)
+  "
   [locations point]
   (->> locations
        (map (fn [location] (conj location
@@ -46,27 +89,51 @@
        (apply min-key key)
        val
        (map :id)))
+(closest-locations-to-point '({:id 0 :x 0 :y 0} {:id 1 :x 5 :y 5}) {:x 1 :y 1})
+(closest-locations-to-point '({:id 0 :x 0 :y 0} {:id 1 :x 4 :y 4}) {:x 2 :y 2})
 
 (defn count-as-closest?
+  "
+  특정 좌표로부터 가장 가까운 위치로 셀 지 여부를 구하는 함수
+  input: 가장 가까운 위치의 리스트
+  output: 가장 가까운 위치가 갯수가 하나인지 여부
+  "
   [{:keys [closest-locations]}]
   (= (count closest-locations)
      1))
 
 (defn on-the-border?
+  "
+  주어진 위치가 영역의 경계선 상에 있는지 여부
+  input: {:min-x x좌표 중 최소값 max-x x좌표 중 최대값 :min-y y좌표 중 최소값 :max-y y좌표 중 최대값}
+         {:x x좌표 :y y좌표}
+  output: 경계선상에 있는지 여부
+  {:min-x 0 :min-y 0 :max-x 3 :max-y 3} {:x 1 :y 1} -> false
+  {:min-x 0 :min-y 0 :max-x 3 :max-y 3} {:x 1 :y 3} -> true
+  "
   [{:keys [min-x min-y max-x max-y]}
    {:keys [x y]}]
   (or (= min-x x)
       (= max-x x)
       (= min-y y)
       (= max-y y)))
+(on-the-border? {:min-x 0 :min-y 0 :max-x 3 :max-y 3} {:x 1 :y 1})
+(on-the-border? {:min-x 0 :min-y 0 :max-x 3 :max-y 3} {:x 1 :y 3})
 
 (defn sum-distances
+  "
+  주어진 점과 입력 상에 주어진 위치 각각의 거리의 합
+  input: locations - '({:id 번째수 :x x좌표 :y y좌표} ...) point - {:x x좌표 :y y좌표}
+  output: 거리의 합
+  example
+  '({:id 0 :x 0 :y 0} {:id 1 :x 5 :y 5}) {:x 1 :y 1} -> 10
+  "
   [locations point]
   (->> locations
        (map (fn [location] (manhattan-distance location point)))
        (reduce +)))
 
-
+(sum-distances '({:id 0 :x 0 :y 0} {:id 1 :x 5 :y 5}) {:x 1 :y 1})
 
 
 
@@ -149,10 +216,10 @@
 
 ;; N이 10000 미만인 안전한 지역의 사이즈를 구하시오.
 
-(let [locations (map-indexed parse input-lines)
-      area (area-in-interest locations)]
-  (->> (all-points-in-given-area area)
-       (map (fn [point] {:point point
-                         :distance-sum (sum-distances locations point)}))
-       (filter (fn [{:keys [distance-sum]}] (<= distance-sum 10000)))
+(let [locations (map-indexed parse input-lines)]
+  (->> locations
+       area-in-interest
+       all-points-in-given-area
+       (map (fn [point] (sum-distances locations point)))
+       (filter (fn [distance-sum] (<= distance-sum 10000)))
        count))
