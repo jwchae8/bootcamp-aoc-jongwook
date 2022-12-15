@@ -58,3 +58,62 @@
 (take 26 (iterate topological-sort graph))
 (apply str (reduce (fn [x y] (concat x (first (sort (map key (filter #(= (count (val %)) 0) y)))))) "" (take 26 (iterate topological-sort graph))))
 
+(defn no-dependency?
+  [job-to-dependencies]
+  (-> job-to-dependencies
+      val
+      count
+      zero?))
+
+(defn remove-jobs-from-graph
+  [graph jobs]
+  (->> (apply dissoc graph jobs)
+       (reduce (fn [graph-after-removal [job dependency]]
+                 (merge graph-after-removal {job (apply disj dependency jobs)})) {})))
+(defn available-worker-count
+  [{:keys [worker-count
+           scheduled-jobs]}]
+  (- worker-count (count scheduled-jobs)))
+
+(defn job-to-finished-time
+  [])
+(defn finish-jobs
+  [{:keys [scheduled-jobs]
+    :as state}]
+  (let [finished-jobs (->> scheduled-jobs
+                           (apply min-key val))]
+    (assoc state :scheduled-jobs (apply dissoc scheduled-jobs (map key finished-jobs))
+                 :current-timestamp (-> finish-jobs
+                                        first
+                                        val))))
+
+(defn assign-jobs
+  [{:keys [dependency-graph
+           current-timestamp
+           scheduled-jobs
+           job-elapsed-time]
+    :as state}]
+  (let [no-dependency-jobs (->> dependency-graph
+                                (filter no-dependency?)
+                                (map key)
+                                sort
+                                (take (available-worker-count state)))]
+    (assoc state :scheduled-jobs (merge scheduled-jobs (update-vals
+                                                         (select-keys job-elapsed-time no-dependency-jobs)
+                                                         #(+ % current-timestamp)))
+                 :dependency-graph (remove-jobs-from-graph dependency-graph
+                                                           no-dependency-jobs))))
+
+
+(defn update-state
+  [{:keys [scheduled-jobs]
+    :as state}]
+  (-> state
+      assign-jobs
+      finish-jobs))
+
+(min-key :a '({:a 1 :b 2} {:a 0 :b 1}))
+(apply min-key key {1 2 2 3 3 4})
+
+(apply dissoc {1 2 2 3 3 4} '(1 2))
+(apply disj #{1 2 3 4} '(1 2))

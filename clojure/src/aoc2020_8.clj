@@ -1,6 +1,5 @@
 (ns aoc2020_8)
 
-(parse-long "-4")
 
 (def input-lines
   "
