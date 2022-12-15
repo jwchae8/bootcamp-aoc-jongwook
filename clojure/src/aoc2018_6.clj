@@ -75,7 +75,7 @@
 
 (defn closest-locations-to-point
   "
-  입력 상에 주어진 위치들 중 주어진 점과 가장 가까운 곳들의 좌표를 구하는 함수
+  입력 상에 주어진 위치들 중 주어진 점과 가장 가까운 곳들의 인덱스를 구하는 함수
   input: locations - '({:id 번째수 :x x좌표 :y y좌표} ...) point - {:x x좌표 :y y좌표}
   output: 가장 가까운 위치의 id들의 리스트
   example
@@ -83,7 +83,7 @@
   "
   [locations point]
   (->> locations
-       (map (fn [location] (conj location
+       (map (fn [location] (conj location ;; assoc를 사용하기
                                  {:distance (manhattan-distance location point)})))
        (group-by :distance)
        (apply min-key key)
@@ -182,12 +182,15 @@
 (let [locations (map-indexed parse input-lines)
       area (area-in-interest locations)
       on-the-border-of-the-area? (partial on-the-border? area)]
-  (->> (all-points-in-given-area area)
+  (->> area
+       all-points-in-given-area
        (map (fn [point] {:point point
                          :closest-locations (closest-locations-to-point locations point)}))
        (filter count-as-closest?)
        (group-by :closest-locations)
-       (map (fn [location] (map :point (val location))))
+       ;; vals
+       ;; (map :point)
+       (map (fn [location] (map :point (val location)))) ;; location 더 알맞은 이름으로 map-vals
        (remove (fn [points] (some on-the-border-of-the-area? points)))
        (map count)
        (apply max)))
@@ -215,11 +218,12 @@
 ;; Total distance: 5 + 6 + 4 + 2 + 3 + 10 = 30
 
 ;; N이 10000 미만인 안전한 지역의 사이즈를 구하시오.
+;; 최종 풀이도 함수화하자
+(comment (let [locations (map-indexed parse input-lines)]
+           (->> locations
+                area-in-interest
+                all-points-in-given-area
+                (map (fn [point] (sum-distances locations point)))
+                (filter #(< % 10000))
+                count)))
 
-(let [locations (map-indexed parse input-lines)]
-  (->> locations
-       area-in-interest
-       all-points-in-given-area
-       (map (fn [point] (sum-distances locations point)))
-       (filter (fn [distance-sum] (<= distance-sum 10000)))
-       count))
