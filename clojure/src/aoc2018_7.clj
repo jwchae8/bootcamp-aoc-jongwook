@@ -36,7 +36,7 @@
          (prerequisite job)의 순서
   output: key는 job이고 value는 그 job이 실행되기 위한 prerequisite들의 set인 hashmap
   example
-  ((:A :B)) -> {:A #{} :B #{A}
+  ((:A :B)) -> {:A #{} :B #{A}}
   "
   [dependencies]
   (reduce (fn [graph [prerequisite job]]
@@ -70,24 +70,29 @@
   그래프로부터 job을 제거하는 함수(key중에 job을 제거)
   input: graph를 의미하는 hashmap과 job id의 list
   output: graph로부터 job id의 list에 해당하는 key가 제거된 hashmap
+  example
+  {:A #{:B :C} :B #{:C} :C #{} :D #{}} (:C) -> {:A #{:B :C} :B #{:C}}
   "
   [graph jobs]
   (apply dissoc graph jobs))
+
+(comment
+  (remove-jobs-from-graph {:A #{:B :C} :B #{:C} :C #{} :D #{}} '(:C :D)))
 
 (defn remove-dependencies-from-graph
   "
   그래프로부터 dependency를 제거하는 함수(val에서 job을 제거)
   input: graph를 의미하는 hashmap과 job id의 list
   output: graph로부터 각 value에 해당하는 set에서 job id들이 제거되고 남은 hashmap
+  example
+  {:A #{:B :C} :B #{:C}} (:C) -> {:A #{:B} :B #{}}
   "
-  [graph dependencies]
-  (reduce (fn [graph-after-removal
-               [job dependency]]
-            (assoc graph-after-removal
-              job
-              (apply disj dependency dependencies)))
-          {}
-          graph))
+  [graph removed-dependencies]
+  (update-vals graph (fn [dependencies]
+                       (apply disj dependencies removed-dependencies))))
+
+(comment
+  (remove-dependencies-from-graph {:A #{:B :C} :B #{:C}} '(:C)))
 
 (defn available-worker-count
   "
@@ -108,7 +113,9 @@
   (zipmap alphabet-set required-time))
 
 (comment
-  (job-to-required-time (iterate inc 1)))
+  (job-to-required-time (repeat 1)))
+(comment
+  (job-to-required-time (iterate inc 61)))
 
 (defn finish-jobs
   "
@@ -191,20 +198,23 @@
       assign-jobs
       finish-jobs))
 
+(defn state-after-all-jobs-done
+  [state]
+  (first (drop-while jobs-remaining? state)))
+
 ;; part1
-(defn single-worker-immediate-finished-job
+(defn single-worker-immediately-finished-job
   [input-lines]
   (->> input-lines
        (map parse)
        (init-state 1 (repeat 1))
        (iterate update-state)
-       (drop-while jobs-remaining?)
-       first
+       state-after-all-jobs-done
        :job-history
        (map name)
        (apply str)))
 (comment
-  (single-worker-immediate-finished-job input-lines))
+  (single-worker-immediately-finished-job input-lines))
 
 ;; part2
 (defn multi-worker-time-taking-job
@@ -213,8 +223,7 @@
        (map parse)
        (init-state 5 (iterate inc 61))
        (iterate update-state)
-       (drop-while jobs-remaining?)
-       first
+       state-after-all-jobs-done
        :current-timestamp))
 
 (comment
