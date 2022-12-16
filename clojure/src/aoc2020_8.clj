@@ -25,7 +25,7 @@
   [line]
   (-> line
     (clojure.string/split #" ")
-    ((fn [[op arg]] {:operation op
+    ((fn [[op arg]] {:operation (keyword op)
                      :argument (parse-long arg)}))))
 (comment
   (parse "nop +355")
@@ -61,6 +61,8 @@
     (assoc state :program-counter (+ program-counter next-program-counter)
                  :execution-history (conj execution-history program-counter))))
 
+;; defmulti - defmethod로 해보기
+;; execute-**들끼리 공통분모를 한 함수로 묶고 state 업데이트하는 부분만 갈라보기
 (defn execute-acc
   "
   input: 현재 상태값을 나타내는 hashmap
@@ -92,9 +94,9 @@
   "
   명령 타입 값과 처리 함수를 연결해주는 해시맵
   "
-  {"jmp" execute-jmp
-   "acc" execute-acc
-   "nop" execute-nop})
+  {:jmp execute-jmp
+   :acc execute-acc
+   :nop execute-nop})
 
 (defn execute-operations
   "
@@ -159,11 +161,11 @@
   output: 프로그램 실행을 더 평가하지 않아도 되는지 여부
   "
   [operation]
-  (#{"jmp" "nop"} operation))
+  (#{:jmp :nop} operation))
 (comment
   (jmp-or-nop? "acc")
-  (jmp-or-nop? "jmp")
-  (jmp-or-nop? "nop"))
+  (jmp-or-nop? :jmp)
+  (jmp-or-nop? :nop))
 
 (defn program-counters-of-jmp-and-nop
   "
@@ -182,20 +184,21 @@
   위의 변환을 해주는 함수
   "
   [operation]
-  ({"jmp" "nop"
-    "nop" "jmp"}
+  ({:jmp :nop
+    :nop :jmp}
    operation))
 (comment
-  (switch-jmp-and-nop "jmp")
-  (switch-jmp-and-nop "nop"))
+  (switch-jmp-and-nop :jmp)
+  (switch-jmp-and-nop :nop))
 
+;; reduce 대신 drop-while/first?
 (defn accumulator-when-execution-meets-condition
   "
   프로그램 실행을 그치는 조건과 실행 결과의 lazy seq을 받아서 프로그램 실행 상태가 조건을 만족할 시
   accumulator의 값을 꺼내주는 함수
   condition?에 loop?을 넣으면 loop이 발생하기 직전 accumulator값을 꺼내줌
   condition?에 terminated?을 넣으면 종료하고 난 후 accumulator값을 꺼내줌
-  input: 두 상태 hashmap을 받아서 boolean을 리턴하는 함수, 명령 상태의 lazy-seq
+  input: 두 상태 hashmap을 받아서 boolean을 리턴하는 함수, 명령의 벡터
   output: accumulator 숫자값
   "
   [condition? executions]
@@ -225,9 +228,9 @@
     (->> operations
          program-counters-of-jmp-and-nop
          (map #(update-in operations [% :operation] switch-jmp-and-nop))
-         (map #(accumulator-when-execution-meets-condition terminated? %))
-         (remove nil?)
+         (keep #(accumulator-when-execution-meets-condition terminated? %))
          first)))
+
 
 (comment
   (accumulator-value-after-program-termination input-lines))
