@@ -6,58 +6,19 @@
                    clojure.string/split-lines))
 
 (def input-pattern #"([A-Z]) must be finished before step ([A-Z])")
-(map str "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-(zipmap "ABCDEFGHIJKLMNOPQRSTUVWXYZ" (repeat #{}))
-(map (partial re-find input-pattern) input-lines)
-(->> input-lines
-     (map (partial re-find input-pattern))
-     (map rest)
-     ((fn [y] (reduce (fn [x [s t]] (merge-with into x {t #{s}})) (zipmap (map first y) (repeat #{})) y))))
-     ;((fn [y] (reduce (fn [x [s t]] (merge-with into x {s #{t}})) (zipmap (map second y) (repeat #{}))))))
-     ;(reduce (fn [x y] (merge-with into x y)) (zipmap "ABCDEFGHIJKLMNOPQRSTUVWXYZ" (repeat #{}))))
-
-(first '("O" "N"))
-(second '("O" "N"))
-(merge-with into {"O" #{"N"}} {(first '("K" "Y"))
-                               #{(second '("K" "Y"))}})
-
-(def graph {"T" #{"S" "R" "U"},
-            "K" #{"B"},
-            "Q" #{"H" "W"},
-            "L" #{"Q" "J" "Z" "E" "F" "P" "U" "O" "N" "A" "W" "D"},
-            "G" #{"R" "A" "I"},
-            "J" #{},
-            "M" #{"T" "Q" "G" "Y" "H" "U" "X" "A" "I"},
-            "S" #{},
-            "Y" #{"C" "B"},
-            "Z" #{"Q" "M" "H" "R" "C" "F" "P" "V" "O" "X" "N" "A"},
-            "H" #{"R"},
-            "E" #{"G" "M" "Z" "R" "C" "F" "P" "X" "N" "A" "I"},
-            "R" #{},
-            "C" #{"S"},
-            "F" #{"T" "M" "C" "U" "O" "A" "D"},
-            "B" #{"S"},
-            "P" #{"T" "Y" "O" "A" "D"},
-            "V" #{"B"},
-            "U" #{},
-            "O" #{"S" "Y" "H" "D"},
-            "X" #{"Q" "S" "C" "P" "O" "I" "W"},
-            "N" #{"G" "M" "H" "C" "P" "U" "O" "I"},
-            "A" #{"K" "Q" "D"},
-            "I" #{"Q" "J" "S"},
-            "W" #{"S" "V"},
-            "D" #{"J" "U" "W"}})
-(first (sort (map key (filter #(= (count (val %)) 0) graph))))
-(map key (filter #(= (count (val %)) 0) graph))
-(first (sort '("L" "M" "A")))
-
-
-(defn topological-sort [graph] (let [no-dependency (first (sort (map key (filter #(= (count (val %)) 0) graph))))]
-                                 (->> (dissoc graph no-dependency)
-                                      (reduce (fn [x [a b]] (merge x {a (disj b no-dependency)}) ) {}))))
-(take 26 (iterate topological-sort graph))
-(apply str (reduce (fn [x y] (concat x (first (sort (map key (filter #(= (count (val %)) 0) y)))))) "" (take 26 (iterate topological-sort graph))))
-
+(def alphabet-set (map keyword (clojure.string/split "ABCDEFGHIJKLMNOPQRSTUVWXYZ" #"")))
+(defn parse
+  [line]
+  (->> line
+       (re-find input-pattern)
+       rest
+       (map keyword)))
+(defn graph
+  [dependencies]
+  (reduce (fn [graph [prerequisite job]]
+            (merge-with into graph {job #{prerequisite}}))
+          (zipmap (map first dependencies) (repeat #{}))
+          dependencies))
 (defn no-dependency?
   [job-to-dependencies]
   (-> job-to-dependencies
@@ -67,31 +28,49 @@
 
 (defn remove-jobs-from-graph
   [graph jobs]
-  (->> (apply dissoc graph jobs)
-       (reduce (fn [graph-after-removal [job dependency]]
-                 (merge graph-after-removal {job (apply disj dependency jobs)})) {})))
+  (apply dissoc graph jobs))
+       ;(reduce (fn [graph-after-removal
+       ;             [job dependency]]
+       ;          (merge graph-after-removal {job
+       ;                                      (apply disj dependency removed-jobs)})) {})))
+
+(defn remove-dependencies-from-graph
+  [graph dependencies]
+  (reduce (fn [graph-after-removal
+               [job dependency]]
+            (merge graph-after-removal {job
+                                        (apply disj dependency dependencies)})) {} graph))
+
 (defn available-worker-count
   [{:keys [worker-count
            scheduled-jobs]}]
   (- worker-count (count scheduled-jobs)))
 
-(defn job-to-finished-time
-  [])
+(defn job-to-required-time
+  [required-time]
+  (zipmap alphabet-set required-time))
+
 (defn finish-jobs
-  [{:keys [scheduled-jobs]
+  [{:keys [scheduled-jobs
+           job-history
+           dependency-graph]
     :as state}]
   (let [finished-jobs (->> scheduled-jobs
-                           (apply min-key val))]
-    (assoc state :scheduled-jobs (apply dissoc scheduled-jobs (map key finished-jobs))
-                 :current-timestamp (-> finish-jobs
-                                        first
-                                        val))))
+                           (group-by val)
+                           (apply min-key key))]
+    (assoc state :scheduled-jobs (->> finished-jobs
+                                      val
+                                      (map first)
+                                      (apply dissoc scheduled-jobs))
+                 :current-timestamp (key finished-jobs)
+                 :job-history (apply conj job-history (sort (map first (val finished-jobs))))
+                 :dependency-graph (remove-dependencies-from-graph dependency-graph (map first (val finished-jobs))))))
 
 (defn assign-jobs
   [{:keys [dependency-graph
            current-timestamp
            scheduled-jobs
-           job-elapsed-time]
+           job-to-required-time]
     :as state}]
   (let [no-dependency-jobs (->> dependency-graph
                                 (filter no-dependency?)
@@ -99,21 +78,50 @@
                                 sort
                                 (take (available-worker-count state)))]
     (assoc state :scheduled-jobs (merge scheduled-jobs (update-vals
-                                                         (select-keys job-elapsed-time no-dependency-jobs)
+                                                         (select-keys job-to-required-time no-dependency-jobs)
                                                          #(+ % current-timestamp)))
                  :dependency-graph (remove-jobs-from-graph dependency-graph
                                                            no-dependency-jobs))))
 
+(defn init-state
+  [worker-count required-time dependencies]
+  {:dependency-graph (graph dependencies)
+   :current-timestamp 0
+   :scheduled-jobs {}
+   :job-to-required-time (job-to-required-time required-time)
+   :worker-count worker-count
+   :job-history []})
 
 (defn update-state
-  [{:keys [scheduled-jobs]
-    :as state}]
+  [state]
   (-> state
       assign-jobs
       finish-jobs))
 
-(min-key :a '({:a 1 :b 2} {:a 0 :b 1}))
-(apply min-key key {1 2 2 3 3 4})
+(defn single-worker-immediate-finished-job
+  [input-lines]
+  (->> input-lines
+       (map parse)
+       (init-state 1 (repeat 1))
+       (iterate update-state)
+       (drop-while #(seq (:dependency-graph %)))
+       first
+       :job-history
+       (map name)
+       (apply str)))
+(comment
+  (single-worker-immediate-finished-job input-lines))
+(graph (map parse input-lines))
+(defn multi-worker-time-taking-job
+  [input-lines]
+  (->> input-lines
+       (map parse)
+       (init-state 5 (iterate inc 61))
+       (iterate update-state)
+       (drop-while #(or (seq (:dependency-graph %)) (seq (:scheduled-jobs %))))
+       first
+       :current-timestamp))
 
-(apply dissoc {1 2 2 3 3 4} '(1 2))
-(apply disj #{1 2 3 4} '(1 2))
+(job-to-required-time (iterate inc 61))
+(comment
+  (multi-worker-time-taking-job input-lines))
