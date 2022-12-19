@@ -58,8 +58,7 @@
   [job-to-dependencies]
   (-> job-to-dependencies
       val
-      count
-      zero?))
+      empty?))
 (comment
   (no-dependency? (first {:A #{}})))
 (comment
@@ -127,15 +126,14 @@
            job-history
            dependency-graph]
     :as state}]
-  (let [earliest-finished-time-and-jobs (->> scheduled-jobs
-                                             (group-by val)
-                                             (apply min-key key))
-        finished-job-ids (->> earliest-finished-time-and-jobs
-                              val
+  (let [[finished-time finished-jobs] (->> scheduled-jobs
+                                           (group-by val)
+                                           (apply min-key key))
+        finished-job-ids (->> finished-jobs
                               (map first)
                               sort)]
     (assoc state :scheduled-jobs (apply dissoc scheduled-jobs finished-job-ids)
-                 :current-timestamp (key earliest-finished-time-and-jobs)
+                 :current-timestamp finished-time
                  :job-history (apply conj job-history finished-job-ids)
                  :dependency-graph (remove-dependencies-from-graph dependency-graph finished-job-ids))))
 
@@ -154,10 +152,11 @@
                                 (filter no-dependency?)
                                 (map key)
                                 sort
-                                (take (available-worker-count state)))]
-    (assoc state :scheduled-jobs (merge scheduled-jobs (update-vals
-                                                         (select-keys job-to-required-time no-dependency-jobs)
-                                                         #(+ % current-timestamp)))
+                                (take (available-worker-count state)))
+        new-scheduled-jobs (-> job-to-required-time
+                               (select-keys no-dependency-jobs)
+                               (update-vals #(+ % current-timestamp)))]
+    (assoc state :scheduled-jobs (merge scheduled-jobs new-scheduled-jobs)
                  :dependency-graph (remove-jobs-from-graph dependency-graph
                                                            no-dependency-jobs))))
 
@@ -167,8 +166,9 @@
   input: state
   output: 주어진 state에 남은 job 혹은 아직 진행 중인 job이 있으면 true, 아니면 false
   "
-  [state]
-  (or (seq (:dependency-graph state)) (seq (:scheduled-jobs state))))
+  [{:keys [dependency-graph
+           scheduled-jobs]}]
+  (or (seq dependency-graph) (seq scheduled-jobs)))
 
 (defn init-state
   "
