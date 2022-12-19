@@ -7,7 +7,7 @@
                    (map parse-long)))
 (def indexed-input-lines (map-indexed vector input-lines))
 
-(defn product-of-two-entries-sum-n-using-for
+(defn product-of-two-entries-sum-n
   [indexed-nums n]
   (-> (for [[idx1 num1] indexed-nums
             [idx2 num2] indexed-nums
@@ -17,9 +17,10 @@
        (* num1 num2))
       first))
 
-(product-of-two-entries-sum-n-using-for indexed-input-lines 2020)
+(comment
+  (product-of-two-entries-sum-n indexed-input-lines 2020))
 
-(defn product-of-three-entries-sum-n-using-for
+(defn product-of-three-entries-sum-n
   [indexed-nums n]
   (-> (for [[idx1 num1] indexed-nums
             [idx2 num2] indexed-nums
@@ -31,19 +32,24 @@
         (* num1 num2 num3))
       first))
 
-(product-of-three-entries-sum-n-using-for indexed-input-lines 2020)
+(comment
+  (product-of-three-entries-sum-n indexed-input-lines 2020))
 
 
-(defn product-of-two-entries-sum-n
+(defn product-of-two-entries-sum-n-using-set
   [nums n]
   (reduce (fn [x y] (if (x (- n y))
                       (reduced (* y (- n y)))
                       (conj x y))) #{} nums))
+(comment
+  (product-of-two-entries-sum-n-using-set input-lines 2020))
 
-(product-of-two-entries-sum-n input-lines 2020)
+(defn product-of-three-entries-sum-n-using-set
+  [nums n]
+  (reduce (fn
+            [x y]
+            (let [two-entries (product-of-two-entries-sum-n-using-set (rest x) (- n y))]
+              (if (integer? two-entries) (reduced (* y two-entries)) (rest x)))) nums nums))
 
-;(defn product-of-three-entries-sum-n
-;  [nums n]
-;  (reduce (fn [x y] (if (product-of-two-entries-sum-n (rest x) (- n (first x)))
-;                      (reduced (* y (- 2020 y)))
-;                      (rest y))) nums nums))
+(comment
+  (product-of-three-entries-sum-n-using-set input-lines 2020))
