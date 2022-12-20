@@ -53,8 +53,6 @@
   "
   {field-key field-value})
 
-(parse-field-value [:hgt "180"])
-(re-find #"^(\d+)(cm|in)$" "180")
 (defn parse-field
   "
   key:value 형태의 field string에 대한 parsing
@@ -102,7 +100,7 @@
   (s/def ::iyr (s/int-in 2010 2021))
   (s/def ::eyr (s/int-in 2020 2031))
   (s/def ::hgt valid-hgt?)
-  (s/def ::hcl (partial re-matches #"#[0-9a-f]{6}"))
+  (s/def ::hcl (partial re-matches #"#[a-f0-9]{6}"))
   (s/def ::ecl #{"amb" "blu" "brn" "gry" "grn" "hzl" "oth"})
   (s/def ::pid (partial re-matches #"[0-9]{9}"))
   (s/def ::cid any?))
